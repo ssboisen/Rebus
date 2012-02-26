@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Dynamic;
 using Microsoft.WindowsAzure;
 using Rebus;
 using Rebus.Bus;
@@ -13,7 +14,7 @@ using Sample.Server.Messages;
 
 namespace Sample.Client
 {
-    class Program : IActivateHandlers, IHandleMessages<Pong>, IDetermineDestination
+    class Program : IActivateHandlers, IHandleMessages<object>, IDetermineDestination
     {
         private const string clientQueue = "sample-client";
         private const string serverQueue = "sample-server";
@@ -48,7 +49,7 @@ namespace Sample.Client
                                    inMemorySubscriptionStorage,
                                    sagaPersister,
                                    program, jsonMessageSerializer, inspectHandlerPipeline);
-            
+
             bus.Start();
 
             do
@@ -58,7 +59,10 @@ namespace Sample.Client
 
                 for (var counter = 1; counter <= count; counter++)
                 {
-                    bus.Send(new Ping { Message = string.Format("Msg. {0}", counter) });
+                    dynamic ping = new ExpandoObject();
+                    ping.Message = string.Format("Msg. {0}", counter);
+                    bus.Send(ping);
+
                 }
 
             } while (true);
@@ -66,31 +70,21 @@ namespace Sample.Client
 
         public IEnumerable<IHandleMessages<T>> GetHandlerInstancesFor<T>()
         {
-            if (typeof(T) == typeof(Pong))
-            {
-                return new[] {(IHandleMessages<T>) this};
-            }
-
-            return new IHandleMessages<T>[0];
+            return new[] { (IHandleMessages<T>)this };
         }
 
         public void Release(IEnumerable handlerInstances)
         {
         }
 
-        public void Handle(Pong message)
+        public void Handle(dynamic message)
         {
             Console.WriteLine("Pong: {0}", message.Message);
         }
 
         public string GetEndpointFor(Type messageType)
         {
-            if (messageType == typeof(Ping))
-            {
-                return serverQueue;
-            }
-
-            throw new ArgumentException(string.Format("Has no routing information for {0}", messageType));
+            return serverQueue;
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Dynamic;
 using Microsoft.WindowsAzure;
 using Rebus;
 using Rebus.Bus;
@@ -13,7 +14,7 @@ using Sample.Server.Messages;
 
 namespace Sample.Server
 {
-    class Program : IActivateHandlers, IHandleMessages<Ping>, IDetermineDestination
+    class Program : IActivateHandlers, IHandleMessages<object>, IDetermineDestination
     {
         private const string serverQueue = "sample-server";
         static void Main()
@@ -59,7 +60,7 @@ namespace Sample.Server
 
         public IEnumerable<IHandleMessages<T>> GetHandlerInstancesFor<T>()
         {
-            if (typeof(T) == typeof(Ping))
+            if (typeof(T) == typeof(object))
             {
                 return new[] { (IHandleMessages<T>)this };
             }
@@ -71,11 +72,13 @@ namespace Sample.Server
         {
         }
 
-        public void Handle(Ping message)
+        public void Handle(dynamic message)
         {
             Console.WriteLine("Got {0}", message.Message);
 
-            Bus.Reply(new Pong { Message = message.Message });
+            dynamic pong = new ExpandoObject();
+            pong.Message = message.Message;
+            Bus.Reply(pong);
         }
 
         public RebusBus Bus { get; set; }
